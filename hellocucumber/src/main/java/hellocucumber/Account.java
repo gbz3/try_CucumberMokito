@@ -15,9 +15,15 @@ public class Account {
         }
         bankService.withdraw(this, amount);
         this.balance -= amount;
+        addAmount(0);
     }
 
     public int getBalance() {
         return balance;
     }
+
+    private void addAmount(int amount) {
+        this.balance += amount;
+    }
+
 }
