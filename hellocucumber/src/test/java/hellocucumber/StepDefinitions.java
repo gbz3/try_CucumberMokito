@@ -79,15 +79,23 @@ public class StepDefinitions {
             var actualCharset = Charset.forName(row.get("actual"));
             var expectedCharset = Charset.forName(row.get("expected"));
 
+            System.out.printf("#### actual:expected = %s:%s%n", actualCharset.name(), expectedCharset.name());
+            System.out.println("####         0x0   0x1   0x2   0x3   0x4   0x5   0x6   0x7   0x8   0x9   0xA   0xB   0xC   0xD   0xE   0xF");
+            // Unicode => byte
             IntStream.rangeClosed(0x00, 0x7f)
                     .forEach(codepoint -> {
                         var asString = Character.isISOControl(codepoint)? "(SpecialCharacter)": String.format("%c", codepoint);
                         var chars = Character.toChars(codepoint);
-                        var actual = actualCharset.encode(CharBuffer.wrap(chars));
-                        var expected = expectedCharset.encode(CharBuffer.wrap(chars));
-                        assertThat(actual.array())
+                        var actualBytes = actualCharset.encode(CharBuffer.wrap(chars)).array();
+                        var expectedBytes = expectedCharset.encode(CharBuffer.wrap(chars)).array();
+                        assertThat(actualBytes)
                                 .as(() -> String.format("U+%04X: %s", codepoint, asString))
-                                .isEqualTo(expected.array());
+                                .isEqualTo(expectedBytes);
+
+                        // Dump
+                        if ((codepoint & 0xF) == 0x0) System.out.printf("#### 0x%02X>", (byte) (codepoint & 0xF0));
+                        System.out.printf(" %02X:%02X", actualBytes[0], expectedBytes[0]);
+                        if ((codepoint & 0xF) == 0xF) System.out.println();
                     });
         }
     }
@@ -98,15 +106,16 @@ public class StepDefinitions {
             var actualCharset = Charset.forName(row.get("actual"));
             var expectedCharset = Charset.forName(row.get("expected"));
 
+            // byte => Unicode
             IntStream.rangeClosed(0x00, 0x7f)
                     .forEach(codepoint -> {
                         var asString = Character.isISOControl(codepoint)? "(SpecialCharacter)": String.format("%c", codepoint);
                         var bytes = new byte[] {(byte) codepoint};
-                        var actual = actualCharset.decode(ByteBuffer.wrap(bytes));
-                        var expected = expectedCharset.decode(ByteBuffer.wrap(bytes));
-                        assertThat(actual.array())
+                        var actualChars = actualCharset.decode(ByteBuffer.wrap(bytes)).array();
+                        var expectedChars = expectedCharset.decode(ByteBuffer.wrap(bytes)).array();
+                        assertThat(actualChars)
                                 .as(() -> String.format("U+%04X: %s", codepoint, asString))
-                                .isEqualTo(expected.array());
+                                .isEqualTo(expectedChars);
                     });
         }
     }
