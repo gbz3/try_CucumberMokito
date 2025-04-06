@@ -83,9 +83,11 @@ public class StepDefinitions {
                     .forEach(codepoint -> {
                         var asString = Character.isISOControl(codepoint)? "(SpecialCharacter)": String.format("%c", codepoint);
                         var chars = Character.toChars(codepoint);
-                        assertThat(actualCharset.encode(CharBuffer.wrap(chars)))
+                        var actual = actualCharset.encode(CharBuffer.wrap(chars));
+                        var expected = expectedCharset.encode(CharBuffer.wrap(chars));
+                        assertThat(actual.array())
                                 .as(() -> String.format("U+%04X: %s", codepoint, asString))
-                                .isEqualTo(expectedCharset.encode(CharBuffer.wrap(chars)));
+                                .isEqualTo(expected.array());
                     });
         }
     }

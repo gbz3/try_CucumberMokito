@@ -1,5 +1,7 @@
 package mycode;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
@@ -14,8 +16,22 @@ public class xIBM1047Decoder extends CharsetDecoder {
     }
 
     @Override
-    protected CoderResult decodeLoop(ByteBuffer in, CharBuffer out) {
-        cd.reset();
-        return cd.decode(in, out, false);
+    protected CoderResult decodeLoop(@NotNull ByteBuffer in, CharBuffer out) {
+        while (in.hasRemaining()) {
+            // 出力バッファに空きが無ければオーバーフロー
+            if (out.remaining() == 0) return CoderResult.OVERFLOW;
+            var b = in.get();
+            switch (b) {
+                case 0x40 -> out.put(' ');  // TODO
+                case 0x5A -> out.put('!');  // TODO
+                default -> {
+                    cd.reset();
+                    var bb = ByteBuffer.wrap(new byte[] {b});
+                    cd.decode(bb, out, false);
+                }
+            }
+        }
+        // 入力バッファを消費した
+        return CoderResult.UNDERFLOW;
     }
 }
