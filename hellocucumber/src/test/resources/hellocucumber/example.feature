@@ -12,3 +12,10 @@ Feature: An example
     Then 口座残高は500円になる
     And 銀行サービスは引き出し処理を1回呼び出す
 
+  Scenario: Charset の変換結果を比較する
+    Then エンコード結果が等しい
+      | actual  | expected |
+      | IBM1047 | xIBM1047 |
+    Then デコード結果が等しい
+      | actual  | expected |
+      | IBM1047 | xIBM1047 |
