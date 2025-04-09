@@ -7,6 +7,7 @@ import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetEncoder;
 import java.nio.charset.CoderResult;
+import java.nio.charset.StandardCharsets;
 
 public class xIBM1047Encoder extends CharsetEncoder {
     private final CharsetEncoder ce = Charset.forName("IBM1047").newEncoder();
@@ -33,6 +34,16 @@ public class xIBM1047Encoder extends CharsetEncoder {
         }
         // 入力バッファを消費した
         return CoderResult.UNDERFLOW;
+    }
+
+    public static byte @NotNull [] getBytes(int value) {
+        if (value < 0) throw new IllegalArgumentException("value is negative");
+        var number = String.format("%d", value).getBytes(StandardCharsets.UTF_8);
+        for (var i = 0; i < number.length; i++) {
+            number[i] |= (byte) 0xF0;
+            //System.out.printf("%s%02X", (i == 0? "": " "), number[i]);
+        }
+        return number;
     }
 
 }

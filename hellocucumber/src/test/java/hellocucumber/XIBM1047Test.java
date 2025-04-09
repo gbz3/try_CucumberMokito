@@ -1,5 +1,6 @@
 package hellocucumber;
 
+import mycode.xIBM1047Encoder;
 import mycode.xIBM1047_1Byte;
 import org.junit.jupiter.api.Test;
 
@@ -31,5 +32,21 @@ class XIBM1047Test {
         }
 
         assertThat(actualBytes).isEqualTo(expectedBytes);
+    }
+
+    @Test
+    void testBytes() {
+        assertThat(xIBM1047Encoder.getBytes(0)).isEqualTo(new byte[] { (byte) 0xF0 });
+        assertThat(xIBM1047Encoder.getBytes(1)).isEqualTo(new byte[] { (byte) 0xF1 });
+        assertThat(xIBM1047Encoder.getBytes(2)).isEqualTo(new byte[] { (byte) 0xF2 });
+        assertThat(xIBM1047Encoder.getBytes(3)).isEqualTo(new byte[] { (byte) 0xF3 });
+        assertThat(xIBM1047Encoder.getBytes(4)).isEqualTo(new byte[] { (byte) 0xF4 });
+        assertThat(xIBM1047Encoder.getBytes(5)).isEqualTo(new byte[] { (byte) 0xF5 });
+        assertThat(xIBM1047Encoder.getBytes(6)).isEqualTo(new byte[] { (byte) 0xF6 });
+        assertThat(xIBM1047Encoder.getBytes(7)).isEqualTo(new byte[] { (byte) 0xF7 });
+        assertThat(xIBM1047Encoder.getBytes(8)).isEqualTo(new byte[] { (byte) 0xF8 });
+        assertThat(xIBM1047Encoder.getBytes(9)).isEqualTo(new byte[] { (byte) 0xF9 });
+        assertThat(xIBM1047Encoder.getBytes(1234567890)).isEqualTo(new byte[] { (byte) 0xF1, (byte) 0xF2, (byte) 0xF3, (byte) 0xF4, (byte) 0xF5, (byte) 0xF6, (byte) 0xF7, (byte) 0xF8, (byte) 0xF9, (byte) 0xF0 });
+        assertThat(xIBM1047Encoder.getBytes(Integer.MAX_VALUE)).isEqualTo(new byte[] { (byte) 0xF2, (byte) 0xF1, (byte) 0xF4, (byte) 0xF7, (byte) 0xF4, (byte) 0xF8, (byte) 0xF3, (byte) 0xF6, (byte) 0xF4, (byte) 0xF7 });
     }
 }
