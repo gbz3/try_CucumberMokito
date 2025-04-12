@@ -42,16 +42,48 @@ public class TsvReader {
         return result.isEmpty()? Optional.empty(): Optional.of(result);
     }
 
-    static byte[] fieldsToLine(@NotNull List<byte @NotNull []> fields) {
-        return new byte[0];
+    // Dummy
+    static byte @NotNull [] fieldsToLine(@NotNull List<byte @NotNull []> fields) {
+        var len = fields.stream().mapToInt(e -> e.length).sum();
+        var buff = ByteBuffer.allocate(len);
+        for (var field : fields) {
+            buff.put(field);
+        }
+        return buff.array();
     }
 
     static void writeBlock(
             @NotNull FileChannel writeChannel,
             @NotNull ByteBuffer buff,
-            byte[] line
-    ) {
+            byte @NotNull [] line
+    ) throws IOException {
+            buff.putInt(line.length);
+            buff.put(line);
 
+            while (buff.position() >= 1012) {
+                var outBytes = new byte[1014];
+                outBytes[1012] = (byte)0x40;
+                outBytes[1013] = (byte)0x40;
+                buff.flip();
+                buff.get(outBytes);
+                buff.compact();
+
+                var written = writeChannel.write(ByteBuffer.wrap(outBytes));
+                if (written != outBytes.length) {
+                    throw new IllegalArgumentException("Written bytes did not match expected");
+                }
+            }
+
+        if (line.length == 0) {
+            var padding = HexFormat.of().parseHex("40".repeat(1014 - buff.position()));
+            buff.put(padding);
+            buff.flip();
+            var written = writeChannel.write(buff);
+            if (written != buff.position()) {
+                throw new IllegalArgumentException("Written bytes did not match expected");
+            }
+            buff.clear();
+        }
     }
 
     static void readTsv(@NotNull FileChannel writeChannel, Path @NotNull ... readPaths) throws IOException {
