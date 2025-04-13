@@ -33,8 +33,8 @@ public class TsvReader {
                 buffer.get(bytes);
                 //System.out.printf("#### bytes=[%s]%n", HexFormat.ofDelimiter(" ").formatHex(bytes));
                 result.add(bytes);
-                if (b == recordDelimiter) break;
                 buffer.position(buffer.position() + 1);
+                if (b == recordDelimiter) break;
                 buffer.mark();
             }
         }

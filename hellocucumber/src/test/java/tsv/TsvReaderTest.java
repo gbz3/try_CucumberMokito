@@ -34,38 +34,41 @@ public class TsvReaderTest {
 
     @Test
     void testCutoutFields() {
-        BiConsumer<String, Optional<List<byte[]>>> ok = (actual, expected) -> {
+        record Expected(int pos, Optional<List<byte[]>> result) {}
+
+        BiConsumer<String, Expected> ok = (actual, expected) -> {
             var bytes = toBytes(actual);
             var buff = ByteBuffer.allocate(bytes.length);
             buff.put(bytes);
             assertThat(TsvReader.cutoutFields(buff))
                     .usingRecursiveComparison()
                     .withRepresentation(new HexadecimalRepresentation())
-                    .isEqualTo(expected);
+                    .isEqualTo(expected.result);
+            assertThat(buff.position()).as(() -> String.format("pos: [%s]", actual)).isEqualTo(expected.pos);
         };
 
         // field 1個
-        ok.accept("", Optional.empty());
-        ok.accept("25", Optional.of(toList("")));
-        ok.accept("F0 25", Optional.of(toList("F0")));
-        ok.accept("F0 F1 25", Optional.of(toList("F0 F1")));
-        ok.accept("F0 F1 25 00", Optional.of(toList("F0 F1")));
-        ok.accept("F0 F1 25 00 00", Optional.of(toList("F0 F1")));
+        ok.accept("", new Expected(0, Optional.empty()));
+        ok.accept("25", new Expected(0, Optional.of(toList(""))));
+        ok.accept("F0 25", new Expected(0, Optional.of(toList("F0"))));
+        ok.accept("F0 F1 25", new Expected(0, Optional.of(toList("F0 F1"))));
+        ok.accept("F0 F1 25 00", new Expected(1, Optional.of(toList("F0 F1"))));
+        ok.accept("F0 F1 25 00 00", new Expected(2, Optional.of(toList("F0 F1"))));
 
         // field 2個
-        ok.accept("05 25", Optional.of(toList("", "")));
-        ok.accept("F0 05 F0 25", Optional.of(toList("F0", "F0")));
-        ok.accept("F0 F1 05 F0 F1 25", Optional.of(toList("F0 F1", "F0 F1")));
-        ok.accept("05 F0 F1 25", Optional.of(toList("", "F0 F1")));
-        ok.accept("F0 F1 05 25", Optional.of(toList("F0 F1", "")));
+        ok.accept("05 25", new Expected(0, Optional.of(toList("", ""))));
+        ok.accept("F0 05 F0 25", new Expected(0, Optional.of(toList("F0", "F0"))));
+        ok.accept("F0 F1 05 F0 F1 25", new Expected(0, Optional.of(toList("F0 F1", "F0 F1"))));
+        ok.accept("05 F0 F1 25", new Expected(0, Optional.of(toList("", "F0 F1"))));
+        ok.accept("F0 F1 05 25", new Expected(0, Optional.of(toList("F0 F1", ""))));
 
         // field 3個
-        ok.accept("05 05 25", Optional.of(toList("", "", "")));
-        ok.accept("F0 05 F0 05 F0 25", Optional.of(toList("F0", "F0", "F0")));
-        ok.accept("F0 F1 05 F0 F1 05 F0 F1 25", Optional.of(toList("F0 F1", "F0 F1", "F0 F1")));
-        ok.accept("05 F0 F1 05 F0 F1 25", Optional.of(toList("", "F0 F1", "F0 F1")));
-        ok.accept("F0 F1 05 05 F0 F1 25", Optional.of(toList("F0 F1", "", "F0 F1")));
-        ok.accept("F0 F1 05 F0 F1 05 25", Optional.of(toList("F0 F1", "F0 F1", "")));
+        ok.accept("05 05 25", new Expected(0, Optional.of(toList("", "", ""))));
+        ok.accept("F0 05 F0 05 F0 25", new Expected(0, Optional.of(toList("F0", "F0", "F0"))));
+        ok.accept("F0 F1 05 F0 F1 05 F0 F1 25", new Expected(0, Optional.of(toList("F0 F1", "F0 F1", "F0 F1"))));
+        ok.accept("05 F0 F1 05 F0 F1 25", new Expected(0, Optional.of(toList("", "F0 F1", "F0 F1"))));
+        ok.accept("F0 F1 05 05 F0 F1 25", new Expected(0, Optional.of(toList("F0 F1", "", "F0 F1"))));
+        ok.accept("F0 F1 05 F0 F1 05 25", new Expected(0, Optional.of(toList("F0 F1", "F0 F1", ""))));
     }
 
     @Test
@@ -158,6 +161,22 @@ public class TsvReaderTest {
             hexBlocks.append("4040");
         }
         return new Expect(new byte[0], HexFormat.of().parseHex(hexBlocks.toString()));
+    }
+
+    @Test
+    void testReadTsv(@TempDir @NotNull Path tempDir) throws IOException {
+        // read 1ファイル
+        var read01 = tempDir.resolve("read01.bin");
+        var outFile = tempDir.resolve("write01.bin");
+
+        Files.write(read01, HexFormat.ofDelimiter(" ").parseHex("20 25"));
+        try (var outChannel = FileChannel.open(outFile, StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
+            TsvReader.readTsv(outChannel, read01);
+
+            var outBytes = Files.readAllBytes(outFile);
+            assertThat(outBytes)
+                    .isEqualTo(HexFormat.of().parseHex(""));
+        }
     }
 
 }
