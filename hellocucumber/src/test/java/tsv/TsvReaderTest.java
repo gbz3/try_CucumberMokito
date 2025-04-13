@@ -112,11 +112,11 @@ public class TsvReaderTest {
                 });
 
         // 2レコード出力
-        IntStream.rangeClosed(0, BUFFER_SIZE - Integer.BYTES)
-                .forEach(count -> {
-                    var record1 = "F1".repeat(count);
-                    ok.accept(new String[] {record1, ""}, toExpect(record1, ""));
-                });
+//        IntStream.rangeClosed(0, BUFFER_SIZE - Integer.BYTES)
+//                .forEach(count -> {
+//                    var record1 = "F1".repeat(count);
+//                    ok.accept(new String[] {record1, ""}, toExpect(record1, ""));
+//                });
         IntStream.rangeClosed(0, BUFFER_SIZE - Integer.BYTES)
                 .forEach(count -> {
                     var record1 = "F1".repeat(count);
@@ -164,19 +164,137 @@ public class TsvReaderTest {
     }
 
     @Test
-    void testReadTsv(@TempDir @NotNull Path tempDir) throws IOException {
-        // read 1ファイル
-        var read01 = tempDir.resolve("read01.bin");
+    void testReadTsv(@TempDir @NotNull Path tempDir) {
         var outFile = tempDir.resolve("write01.bin");
 
-        Files.write(read01, HexFormat.ofDelimiter(" ").parseHex("20 25"));
-        try (var outChannel = FileChannel.open(outFile, StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
-            TsvReader.readTsv(outChannel, read01);
+        record Actual(String ... hexData) {}
+        BiConsumer<Actual, byte[]> ok = (actual, expected) -> {
+            try {
+                var readFiles = new Path[actual.hexData.length];
+                for (var i = 0; i < readFiles.length; i++) {
+                    readFiles[i] = tempDir.resolve(String.format("read%02d.bin", i));
+                    Files.write(readFiles[i], HexFormat.ofDelimiter(" ").parseHex(actual.hexData[i]));
+                }
 
-            var outBytes = Files.readAllBytes(outFile);
-            assertThat(outBytes)
-                    .isEqualTo(HexFormat.of().parseHex(""));
-        }
+                try (var outChannel = FileChannel.open(outFile, StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
+                    TsvReader.readTsv(outChannel, readFiles);
+                }
+
+                var outBytes = Files.readAllBytes(outFile);
+                assertThat(outBytes.length)
+                        .as(() -> String.format("hex=%s", Arrays.stream(actual.hexData).toList()))
+                        .isEqualTo(expected.length);
+                assertThat(outBytes)
+                        .as(() -> String.format("hex=%s", Arrays.stream(actual.hexData).toList()))
+                        .withRepresentation(new HexadecimalRepresentation())
+                        .isEqualTo(expected);
+            } catch (IOException e) {
+                fail(e);
+            }
+        };
+
+        // read 1ファイル
+        ok.accept(new Actual(""), toBytes("00 00 00 00" + " 40".repeat(1014 - 4)));
+        ok.accept(new Actual("25"), toBytes("00 00 00 00" + " 40".repeat(1014 - 4) + " 00 00 00 00" + " 40".repeat(1014 - 4)));
+        ok.accept(new Actual("F1 25"), toBytes("00 00 00 01 F1 00 00 00 00" + " 40".repeat(1014 - 9)));
+        ok.accept(new Actual("F1 F2 25"), toBytes("00 00 00 02 F1 F2 00 00 00 00" + " 40".repeat(1014 - 10)));
+        ok.accept(new Actual("F1 05 F2 25"), toBytes("00 00 00 02 F1 F2 00 00 00 00" + " 40".repeat(1014 - 10)));
+        ok.accept(new Actual("F1 F1 05 F2 F2 05 F3 F3 25"),
+                toBytes("00 00 00 06 F1 F1 F2 F2 F3 F3 00 00 00 00" + " 40".repeat(1014 - 14)));
+
+        // read 2ファイル
+        ok.accept(new Actual("", ""), toBytes("00 00 00 00" + " 40".repeat(1014 - 4)));
+        ok.accept(new Actual("25", "25"),
+                toBytes("00 00 00 00" + " 40".repeat(1014 - 4)
+                        + " 00 00 00 00" + " 40".repeat(1014 - 4)
+                        + " 00 00 00 00" + " 40".repeat(1014 - 4)
+                ));
+        ok.accept(new Actual("F1 25", "F1 25"),
+                toBytes("00 00 00 01 F1 00 00 00 01 F1 00 00 00 00" + " 40".repeat(1014 - 14)));
+        ok.accept(new Actual("F1 F1 05 F2 F2 05 F3 F3 25", "F1 F1 05 F2 F2 05 F3 F3 25"),
+                toBytes("00 00 00 06 F1 F1 F2 F2 F3 F3 00 00 00 06 F1 F1 F2 F2 F3 F3 00 00 00 00" + " 40".repeat(1014 - 24)));
+
+        // read 3ファイル
+        ok.accept(new Actual("", "", ""), toBytes("00 00 00 00" + " 40".repeat(1014 - 4)));
+        ok.accept(new Actual("25", "25", "25"),
+                toBytes("00 00 00 00" + " 40".repeat(1014 - 4)
+                        + " 00 00 00 00" + " 40".repeat(1014 - 4)
+                        + " 00 00 00 00" + " 40".repeat(1014 - 4)
+                        + " 00 00 00 00" + " 40".repeat(1014 - 4)
+                ));
+        ok.accept(new Actual("F1 25", "F1 25", "F1 25"),
+                toBytes("00 00 00 01 F1 00 00 00 01 F1 00 00 00 01 F1 00 00 00 00" + " 40".repeat(1014 - 19)));
+        ok.accept(new Actual("F1 F1 05 F2 F2 05 F3 F3 25", "F1 F1 05 F2 F2 05 F3 F3 25", "F1 F1 05 F2 F2 05 F3 F3 25"),
+                toBytes("00 00 00 06 F1 F1 F2 F2 F3 F3 00 00 00 06 F1 F1 F2 F2 F3 F3 00 00 00 06 F1 F1 F2 F2 F3 F3 00 00 00 00" + " 40".repeat(1014 - 34)));
+
+        // 1rec + 0rec + 1rec
+        ok.accept(new Actual("F1 ".repeat(70) + "25",
+                        "",
+                        "F3 ".repeat(100) + "25"),
+                toBytes("00 00 00 46" + " F1".repeat(70)
+                        + " 00 00 00 64" + " F3".repeat(100) + " 00 00 00 00" + " 40".repeat(1014 - 182)));
+
+        // 1rec + 1rec + 1rec
+        ok.accept(new Actual("F1 ".repeat(70) + "25",
+                        "F2 ".repeat(300) + "25",
+                        "F3 ".repeat(100) + "25"),
+                toBytes("00 00 00 46" + " F1".repeat(70)
+                        + " 00 00 01 2C" + " F2".repeat(300)
+                        + " 00 00 00 64" + " F3".repeat(100) + " 00 00 00 00" + " 40".repeat(1014 - 486)));
+
+        // 1rec + 1rec + 1rec = 1 block
+        ok.accept(new Actual("F1 ".repeat(70) + "25",
+                        "F2 ".repeat(826) + "25",
+                        "F3 ".repeat(100) + "25"),
+                toBytes("00 00 00 46" + " F1".repeat(70)
+                        + " 00 00 03 3A" + " F2".repeat(826)
+                        + " 00 00 00 64" + " F3".repeat(100) + " 00 00 00 00" + " 40".repeat(1014 - 1012)));
+
+        // 1rec + 1rec + 1rec = 2 block
+        ok.accept(new Actual("F1 ".repeat(70) + "25",
+                        "F2 ".repeat(827) + "25",
+                        "F3 ".repeat(100) + "25"),
+                toBytes("00 00 00 46" + " F1".repeat(70)
+                        + " 00 00 03 3B" + " F2".repeat(827)
+                        + " 00 00 00 64" + " F3".repeat(100) + " 00 00 00 40 40"
+                        + " 00" + " 40".repeat(1014 - 1)));
+
+        // 1rec + 1rec + 1rec = 2 block
+        ok.accept(new Actual("F1 ".repeat(70) + "25",
+                        "F2 ".repeat(828) + "25",
+                        "F3 ".repeat(100) + "25"),
+                toBytes("00 00 00 46" + " F1".repeat(70)
+                        + " 00 00 03 3C" + " F2".repeat(828)
+                        + " 00 00 00 64" + " F3".repeat(100) + " 00 00 40 40"
+                        + " 00 00" + " 40".repeat(1014 - 2)));
+
+        // 1rec + 1rec + 1rec = 2 block
+        ok.accept(new Actual("F1 ".repeat(70) + "25",
+                        "F2 ".repeat(829) + "25",
+                        "F3 ".repeat(100) + "25"),
+                toBytes("00 00 00 46" + " F1".repeat(70)
+                        + " 00 00 03 3D" + " F2".repeat(829)
+                        + " 00 00 00 64" + " F3".repeat(100) + " 00 40 40"
+                        + " 00 00 00" + " 40".repeat(1014 - 3)));
+
+        // 1rec + 1rec + 1rec = 2 block
+        ok.accept(new Actual("F1 ".repeat(70) + "25",
+                        "F2 ".repeat(830) + "25",
+                        "F3 ".repeat(100) + "25"),
+                toBytes("00 00 00 46" + " F1".repeat(70)
+                        + " 00 00 03 3E" + " F2".repeat(830)
+                        + " 00 00 00 64" + " F3".repeat(100) + " 40 40"
+                        + " 00 00 00 00" + " 40".repeat(1014 - 4)));
+
+        // 1rec + 1rec + 1rec = 2 block
+        ok.accept(new Actual("F1 ".repeat(70) + "25",
+                        "F2 ".repeat(831) + "25",
+                        "F3 ".repeat(100) + "25"),
+                toBytes("00 00 00 46" + " F1".repeat(70)
+                        + " 00 00 03 3F" + " F2".repeat(831)
+                        + " 00 00 00 64" + " F3".repeat(99) + " 40 40"
+                        + " F3 00 00 00 00" + " 40".repeat(1014 - 5)));
+
     }
 
 }

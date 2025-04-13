@@ -74,7 +74,7 @@ public class TsvReader {
                 }
             }
 
-        if (line.length == 0) {
+        if (line.length == 0 && buff.position() > 0) {
             var padding = HexFormat.of().parseHex("40".repeat(1014 - buff.position()));
             buff.put(padding);
             buff.flip();
@@ -87,8 +87,8 @@ public class TsvReader {
     }
 
     static void readTsv(@NotNull FileChannel writeChannel, Path @NotNull ... readPaths) throws IOException {
+        var writeBuff = ByteBuffer.allocate(4096);
         for (var path : readPaths) {
-            var writeBuff = ByteBuffer.allocate(4096);
 
             try (var readChannel = Files.newByteChannel(path, StandardOpenOption.READ)) {
                 var readBuff = ByteBuffer.allocate(4096);
@@ -112,15 +112,13 @@ public class TsvReader {
                 // readBuff が空でなければエラー（recordDelimiter で終端していない）
                 throwAtNotEmpty(readBuff, path.toString());
             }
-
-            // writeBuff が空でなければ最終ブロック出力
-            if (writeBuff.position() > 0) {
-                writeBlock(writeChannel, writeBuff, new byte[0]);
-            }
-
-            // writeBuff が空でなければエラー
-            throwAtNotEmpty(writeBuff, "out");
         }
+
+        // 最終ブロック出力
+        writeBlock(writeChannel, writeBuff, new byte[0]);
+
+        // writeBuff が空でなければエラー
+        throwAtNotEmpty(writeBuff, "out");
     }
 
     static void throwAtNotEmpty(@NotNull ByteBuffer buff, @NotNull String at) {
