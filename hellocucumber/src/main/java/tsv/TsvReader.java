@@ -65,7 +65,7 @@ public class TsvReader {
                 outBytes[1012] = (byte)0x40;
                 outBytes[1013] = (byte)0x40;
                 buff.flip();
-                buff.get(outBytes);
+                buff.get(outBytes, 0, 1012);
                 buff.compact();
 
                 var written = writeChannel.write(ByteBuffer.wrap(outBytes));
