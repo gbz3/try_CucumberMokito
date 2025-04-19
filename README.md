@@ -37,3 +37,10 @@ $ mvn test
 #### 0x70> 97:97 98:98 99:99 A2:A2 A3:A3 A4:A4 A5:A5 A6:A6 A7:A7 A8:A8 A9:A9 C0:C0 4F:4F D0:D0 A1:A1 07:07
 ...
 ```
+
+## Log4j2
+
+- [Apache Log4j](https://logging.apache.org/log4j/2.x/)
+- [Apache Log4j 2](https://logging.apache.org/log4j/2.12.x/)
+- [Log4j 2ログシステムの基礎となる概念の理解](https://qiita.com/KentOhwada_AlibabaCloudJapan/items/5fb11b26513bfe7e0eed)
+- 

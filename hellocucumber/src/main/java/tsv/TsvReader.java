@@ -1,5 +1,7 @@
 package tsv;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -14,11 +16,14 @@ import java.util.Optional;
 
 public class TsvReader {
 
+    private static final Logger LOGGER = LogManager.getLogger();
+
     static byte fieldDelimiter = (byte)0x05;
     static byte recordDelimiter = (byte)0x25;
 
     static @NotNull Optional<List<byte[]>> cutoutFields(@NotNull ByteBuffer buffer) {
         //System.out.printf("#### >>> buff=[%s]%n", HexFormat.ofDelimiter(" ").formatHex(buffer.array()));
+        LOGGER.debug("#### >>> {}: hex=[{}]", buffer, HexFormat.ofDelimiter(" ").formatHex(buffer.array()));
         var result = new ArrayList<byte[]>();
         buffer.flip();
         buffer.mark();
