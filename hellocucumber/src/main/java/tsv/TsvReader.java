@@ -3,6 +3,7 @@ package tsv;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.Message;
+import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -60,7 +61,7 @@ public class TsvReader {
 
     static @NotNull Optional<List<byte[]>> cutoutFields(@NotNull ByteBuffer buffer) {
         //System.out.printf("#### >>> buff=[%s]%n", HexFormat.ofDelimiter(" ").formatHex(buffer.array()));
-        LOGGER.debug("#### >>> {}: hex=[{}]", buffer, HexFormat.ofDelimiter(" ").formatHex(buffer.array()));
+        LOGGER.debug(() -> new ParameterizedMessage("#### >>> {}: hex=[{}]", buffer, HexFormat.ofDelimiter(" ").formatHex(buffer.array())));
         var recordFound = false;
         var fields = new ArrayList<byte[]>();
         buffer.flip();
