@@ -2,7 +2,11 @@ package tsv;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.message.Message;
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -21,10 +25,44 @@ public class TsvReader {
     static byte fieldDelimiter = (byte)0x05;
     static byte recordDelimiter = (byte)0x25;
 
+    record cutoutParam(@NotNull ByteBuffer buff, @NotNull Optional<List<byte[]>> result) implements Message {
+
+        @Contract(pure = true)
+        @Override
+        public @NotNull String getFormattedMessage() {
+            return String.format("#### %s: hex=[%s] result=%s",
+                    buff, HexFormat.ofDelimiter(" ").formatHex(buff.array()),
+                    result.map(cutoutParam::toHex).orElse("EMPTY")
+            );
+        }
+
+        static @NotNull String toHex(@NotNull List<byte[]> bytesList) {
+            var result = new StringBuilder();
+            for (var bytes: bytesList) {
+                if (!result.isEmpty()) result.append("][");
+                result.append(HexFormat.ofDelimiter(" ").formatHex(bytes));
+            }
+            return "[" + result + "]";
+        }
+
+        @Contract(value = " -> new", pure = true)
+        @Override
+        public Object @NotNull [] getParameters() {
+            return new Object[0];
+        }
+
+        @Contract(pure = true)
+        @Override
+        public @Nullable Throwable getThrowable() {
+            return null;
+        }
+    }
+
     static @NotNull Optional<List<byte[]>> cutoutFields(@NotNull ByteBuffer buffer) {
         //System.out.printf("#### >>> buff=[%s]%n", HexFormat.ofDelimiter(" ").formatHex(buffer.array()));
         LOGGER.debug("#### >>> {}: hex=[{}]", buffer, HexFormat.ofDelimiter(" ").formatHex(buffer.array()));
-        var result = new ArrayList<byte[]>();
+        var recordFound = false;
+        var fields = new ArrayList<byte[]>();
         buffer.flip();
         buffer.mark();
         while (buffer.hasRemaining()) {
@@ -37,14 +75,25 @@ public class TsvReader {
                 var bytes = new byte[size];
                 buffer.get(bytes);
                 //System.out.printf("#### bytes=[%s]%n", HexFormat.ofDelimiter(" ").formatHex(bytes));
-                result.add(bytes);
+                fields.add(bytes);
                 buffer.position(buffer.position() + 1);
-                if (b == recordDelimiter) break;
                 buffer.mark();
+                if (b == recordDelimiter) {
+                    recordFound = true;
+                    break;
+                }
             }
         }
+        if (recordFound) {
+            buffer.reset();
+        } else {
+            buffer.position(0);
+            fields.clear();
+        }
         buffer.compact();
-        return result.isEmpty()? Optional.empty(): Optional.of(result);
+        Optional<List<byte[]>> result = fields.isEmpty()? Optional.empty(): Optional.of(fields);
+        LOGGER.debug(new cutoutParam(buffer, result));
+        return result;
     }
 
     // Dummy
