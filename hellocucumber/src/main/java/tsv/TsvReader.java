@@ -11,13 +11,12 @@ import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
-import java.util.HexFormat;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class TsvReader {
 
@@ -184,6 +183,43 @@ public class TsvReader {
             var bytesHex = HexFormat.ofDelimiter(" ").formatHex(bytes);
             throw new IllegalArgumentException(String.format("invalid data found. %s: [%s]", at, bytesHex));
         }
+    }
+
+    static @NotNull Map<@NotNull String, @NotNull String> toMap(@NotNull String icc) {
+        final var tagSet = Set.of("9F26", "9A").stream()
+                .map(e -> e.getBytes(StandardCharsets.UTF_8))
+                .collect(Collectors.toUnmodifiableSet());
+        final var result = new HashMap<String, String>();
+
+        var iccBuff = ByteBuffer.wrap(icc.getBytes(StandardCharsets.UTF_8));
+        while (iccBuff.hasRemaining()) {
+            var tagBytes = cutTag(iccBuff);
+
+            var lenBytes = new byte[2];
+            iccBuff.get(lenBytes);
+            var len = Integer.parseInt(new String(lenBytes, StandardCharsets.UTF_8));
+
+            var dataBytes = new byte[len * 2];
+            iccBuff.get(dataBytes);
+
+            if (tagSet.stream().anyMatch(e -> Arrays.equals(tagBytes, e))) {
+                result.put(new String(tagBytes, StandardCharsets.UTF_8), new String(dataBytes, StandardCharsets.UTF_8));
+            }
+        }
+        return result;
+    }
+
+    static byte @NotNull [] cutTag(@NotNull ByteBuffer buff) {
+        buff.mark();
+        var tag2 = new byte[2];
+        buff.get(tag2);
+        if ((tag2[1] & (byte)0x46) != (byte) 0x46) {
+            return tag2;
+        }
+        buff.reset();
+        var tag4 = new byte[4];
+        buff.get(tag4);
+        return tag4;
     }
 
 }

@@ -297,4 +297,26 @@ public class TsvReaderTest {
 
     }
 
+    @Test
+    void testToMap() {
+        assertThat(TsvReader.toMap("")).isEqualTo(Map.of());
+        assertThat(TsvReader.toMap("9B0131")).isEqualTo(Map.of());
+        assertThat(TsvReader.toMap("9F220131")).isEqualTo(Map.of());
+
+        assertThat(TsvReader.toMap("9A00")).isEqualTo(Map.ofEntries(Map.entry("9A", "")));
+        assertThat(TsvReader.toMap("9A0131")).isEqualTo(Map.ofEntries(Map.entry("9A", "31")));
+        assertThat(TsvReader.toMap("9A023132")).isEqualTo(Map.ofEntries(Map.entry("9A", "3132")));
+
+        assertThat(TsvReader.toMap("9F2600")).isEqualTo(Map.ofEntries(Map.entry("9F26", "")));
+        assertThat(TsvReader.toMap("9F260131")).isEqualTo(Map.ofEntries(Map.entry("9F26", "31")));
+        assertThat(TsvReader.toMap("9F26023132")).isEqualTo(Map.ofEntries(Map.entry("9F26", "3132")));
+
+        assertThat(TsvReader.toMap("9F26023132" + "9A023132"))
+                .isEqualTo(Map.ofEntries(Map.entry("9F26", "3132"), Map.entry("9A", "3132")));
+        assertThat(TsvReader.toMap("9F26023132" + "9B0131" + "9A023132"))
+                .isEqualTo(Map.ofEntries(Map.entry("9F26", "3132"), Map.entry("9A", "3132")));
+        assertThat(TsvReader.toMap("9F220131" + "9F26023132" + "9B0131" + "9A023132" + "9F220131"))
+                .isEqualTo(Map.ofEntries(Map.entry("9F26", "3132"), Map.entry("9A", "3132")));
+    }
+
 }
